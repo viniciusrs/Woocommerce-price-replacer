@@ -10,7 +10,7 @@ let db = mysql.createConnection({
     host: "localhost",
     user: "root",
     password: "",
-    database : "ark_web"
+    database : "db_name"
 });
 
 let succeed = 0, 
