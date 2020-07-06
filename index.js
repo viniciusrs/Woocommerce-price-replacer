@@ -10,7 +10,7 @@ let db = mysql.createConnection({
     host: "localhost",
     user: "root",
     password: "",
-    database : "db_name"
+    database : ""
 });
 
 let succeed = 0, 
@@ -21,7 +21,7 @@ let succeed = 0,
 
 csv()
 .fromFile(csvFilePath)
-.then((products)=>{
+.then((products) => {
     total = products.length;
 
     console.log(`File read successfully, replacement process started! ${total} rows to be replaced`);
@@ -45,6 +45,20 @@ csv()
                         setFailedProduct(product);
 
                         return;
+                    }
+
+                    let productType = await getProductType(id);
+
+                    if (productType === 'product') {
+                        let childID = await getChildID(id);
+
+                        if (!childID) {
+                            setFailedProduct(product);
+
+                            return;
+                        }
+
+                        id = childID;
                     }
 
                     let result = await updateProductPrice(id, product.price.replace(',', ''));
@@ -75,7 +89,7 @@ csv()
             
             generateCSVFile(failedProducts);
 
-            console.log(`###################################################\n###################################################\nSucceed updates ${succeed}\nFailed updates ${failed}\nTotal ${total} products`);
+            console.log(`###################################################\n###################################################\Successful updates ${succeed}\nFailed updates ${failed}\nTotal ${total} products`);
         })
     });
 },
@@ -91,6 +105,34 @@ async function getIDBySKU(sku) {
             }
 
             return resolve(result[0].post_id);
+        })
+    })
+}
+
+async function getProductType(id) {
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT post_type FROM wp_posts WHERE ID = ${id}`, (err, result) => {
+            if (err) return reject(new Error(err));
+
+            if(!result.length) {
+                return resolve(false);
+            }
+
+            return resolve(result[0].post_type);
+        })
+    })
+}
+
+async function getChildID(parentID) {
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT ID FROM wp_posts WHERE post_parent = ${parentID}`, (err, result) => {
+            if (err) return reject(new Error(err));
+
+            if(!result.length || result.length > 1) {
+                return resolve(false);
+            }
+
+            return resolve(result[0].ID);
         })
     })
 }
